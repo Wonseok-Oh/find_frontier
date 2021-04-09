@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>find_frontier</name>
+  <version>0.0.0</version>
+  <description>The find_frontier package</description>
+
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
+  <!-- Example:  -->
+  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
+  <maintainer email="ooww0123@gmail.com">Wonseok Oh</maintainer>
+  <license>BSD</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>cv_bridge</depend>
+  <depend>geometry_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>rospy</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>	
+  <depend>tf2_geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>costmap_2d</depend>
+  <depend>nav_fn</depend>
+  <depend>global_planner</depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>
