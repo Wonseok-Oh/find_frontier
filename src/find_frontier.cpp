@@ -3,8 +3,8 @@
 using namespace std;
 
 findFrontier::findFrontier(tf2_ros::Buffer& tf): tf_(tf),
-		goal_x(0), goal_y(0), goal_w(1), IsPoseUpdated(0), counter(0), g_isInit(false),
-		bgp_loader_("nav_core", "nav_core::BaseGlobalPlanner"), planner_costmap_ros_(NULL){
+		goal_x(0), goal_y(0), goal_w(1), IsPoseUpdated(0), counter(0), g_isInit(false), agent_dir(0),
+		bgp_loader_("nav_core", "nav_core::BaseGlobalPlanner"), planner_costmap_ros_(NULL), size_x(0), size_y(0){
 		ros::NodeHandle nh;
 		//pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("pose", 1, boost::bind(&findFrontier::PoseSubCb, this, _1) );
 		navigation_map_sub = nh.subscribe<nav_msgs::OccupancyGrid>("navigation_map", 1, &findFrontier::mapConvert, this);
@@ -16,7 +16,7 @@ findFrontier::findFrontier(tf2_ros::Buffer& tf): tf_(tf),
 		marker_pub = nh.advertise<visualization_msgs::Marker>("FrontierLocationMarker",1);
 		goal_pub = nh.advertise<geometry_msgs::PoseStamped>("goal",1, true);
 		g_plan_pub_ = nh.advertise<nav_msgs::Path>("global_plan", 1);
-		action_pub = nh.advertise<std_msgs::Int32MultiArray>("action", 1);
+		action_plan_pub = nh.advertise<std_msgs::Int32MultiArray>("action_plan", 1);
 	    planner_plan_ = new std::vector<geometry_msgs::PoseStamped>();
 	    pose_ptr_ = new geometry_msgs::PoseStamped;
 	    g_initial_pose_ptr = new geometry_msgs::PoseStamped;
@@ -59,8 +59,8 @@ void findFrontier::mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg){
 	  map_start_x = g_initial_pose_ptr->pose.position.x;
 	  map_start_y = g_initial_pose_ptr->pose.position.y;
   }
-  int size_x = msg->info.width; // # of grid
-  int size_y = msg->info.height;
+  size_x = msg->info.width; // # of grid
+  size_y = msg->info.height;
   vector<int> FrontierList;
   //Find the frontiers
   for(int i=0;i<size_x*size_y;i++)
@@ -68,21 +68,23 @@ void findFrontier::mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg){
     int x_ic = i%size_x;
     int y_ic = i/size_x;
 
-    float x_c = float(x_ic)*map_scale-map_start_x;
-    float y_c = float(y_ic)*map_scale-map_start_y;
+    float x_c = float(x_ic+0.5)*map_scale-map_start_x;
+    float y_c = float(y_ic+0.5)*map_scale-map_start_y;
     float distance = 2000;
     if(IsPoseUpdated==1)
     {
       //std::cout << "Pose updated" << std::endl;
-      distance = sqrt(pow(pose_ptr_->pose.position.x-x_c,2)+pow(pose_ptr_->pose.position.y-y_c,2));
+      double cur_pose_x = pose_ptr_->pose.position.x - map_start_x;
+      double cur_pose_y = pose_ptr_->pose.position.y - map_start_y;
+      distance = sqrt(pow(cur_pose_x-x_c,2)+pow(cur_pose_y-y_c,2));
     }
     if(distance > 3)
     {
       if(msg->data[i]==0)
       {
-        if(x_ic>2 && x_ic<size_x-3)
+        if(x_ic >= 2 && x_ic <= size_x-3)
         {
-          if(y_ic>2 && y_ic<size_x-3)
+          if(y_ic >= 2 && y_ic <= size_x-3)
           {
             int nearones_5by5[25];
             int nearones_3by3[9];
@@ -114,8 +116,9 @@ void findFrontier::mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg){
                 }
                 //Unmark if occupied space is near
               }
+              cout << "index: " << i << ", count_occupied: " << count_occupied << endl;
             }
-            if(IsFrontier==1 && count_occupied <= 9)
+            if(IsFrontier==1 && count_occupied <= 20)
             {
               FrontierList.push_back(i);
               std::cout << "frontier index i: " << i << std::endl;
@@ -286,9 +289,14 @@ void findFrontier::mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg){
         p.y = y + map_start_y + map_scale*0.5;
         p.z = z;
         cluster_points.points.push_back(p);
-        goal_x = goal_x+(float(FrontierList[destinationCluster[i]]%size_x)*map_scale)/(float(destinationCluster.size()));
-        goal_y = goal_y+(float(FrontierList[destinationCluster[i]]/size_x)*map_scale)/(float(destinationCluster.size()));
+//        goal_x = goal_x+(float(FrontierList[destinationCluster[i]]%size_x)*map_scale)/(float(destinationCluster.size()));
+//        goal_y = goal_y+(float(FrontierList[destinationCluster[i]]/size_x)*map_scale)/(float(destinationCluster.size()));
       }
+   	  const vector<int>::iterator median_it = destinationCluster.begin() + destinationCluster.size() / 2;
+   	  nth_element(destinationCluster.begin(), median_it, destinationCluster.end());
+   	  int median = *median_it;
+      goal_x = float(FrontierList[median] % size_x) * map_scale;
+      goal_y = float(FrontierList[median] / size_x) * map_scale;
     }
     else
     {
@@ -305,9 +313,15 @@ void findFrontier::mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg){
         p.y = y + map_start_y + map_scale*0.5;
         p.z = z;
         points.points.push_back(p);
-        goal_x = goal_x+(float(FrontierList[i]%size_x)*map_scale)/(float(FrontierList.size()));
-        goal_y = goal_y+(float(FrontierList[i]/size_x)*map_scale)/(float(FrontierList.size()));
+
+        //goal_x = goal_x+(float(FrontierList[i]%size_x)*map_scale)/(float(FrontierList.size()));
+        //goal_y = goal_y+(float(FrontierList[i]/size_x)*map_scale)/(float(FrontierList.size()));
       }
+      const vector<int>::iterator median_it = FrontierList.begin() + FrontierList.size() / 2;
+      nth_element(FrontierList.begin(), median_it, FrontierList.end());
+      int median = *median_it;
+      goal_x = float(median % size_x) * map_scale;
+      goal_y = float(median / size_x) * map_scale;
 
     }
     FrontierList.clear();
@@ -316,21 +330,29 @@ void findFrontier::mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg){
 
     goal_position_.header.frame_id = "map";
     goal_position_.header.stamp = ros::Time::now();
-    goal_position_.pose.position.x = goal_x + map_scale*0.5;
-    goal_position_.pose.position.y = goal_y + map_scale*0.5;
+    // make the goal position to the center of the grid
+    int goal_x_grid = goal_x / map_scale;
+    goal_x_grid = goal_x_grid * map_scale;
+    int goal_y_grid = goal_y / map_scale;
+    goal_y_grid = goal_y_grid * map_scale;
+    goal_position_.pose.position.x = goal_x_grid + map_scale*0.5;
+    goal_position_.pose.position.y = goal_y_grid + map_scale*0.5;
     goal_position_.pose.orientation.w = goal_w;
     goal_pub.publish(goal_position_);
     ROS_INFO("Sending goal");
-
+    cout << "goal_x, goal_y: "<< goal_x << ", " << goal_y << endl;
     // MakePlan
     makePlan(goal_position_, *planner_plan_);
 
-    // Generate local action from generated plan
-    makeActionPlan(*planner_plan_);
+    // Generate local actions from generated plan
+    makeActionPlan(*planner_plan_, msg);
   }
   else
   {
     ROS_INFO("No Frontier Detected");
+    std_msgs::Int32MultiArray action_plan;
+    action_plan.data.push_back(rand() % 3);
+    action_plan_pub.publish(action_plan);
   }
   marker_pub.publish(points);
   marker_pub.publish(cluster_points);
@@ -338,36 +360,246 @@ void findFrontier::mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg){
   cluster_points.points.clear();
 }
 
-void findFrontier::makeActionPlan(const std::vector<geometry_msgs::PoseStamped> plan){
-	std_msgs::Int32MultiArray action_list;
-	std::vector<int> index_plan;
+void findFrontier::addGoRightAction(std_msgs::Int32MultiArray& action_plan, int *dir){
+	int dth;
+	dth = *dir - static_cast<int>(findFrontier::Direction::EAST);
+	*dir = static_cast<int>(findFrontier::Direction::EAST);
+	if (dth < 0) dth += 4; // to make range from 0 to 3
+	if (dth == 3) {
+		action_plan.data.push_back(static_cast<int>(findFrontier::Action::RIGHT));
+	} else {
+		for (int i = 0; i < dth; i++){
+			action_plan.data.push_back(static_cast<int>(findFrontier::Action::LEFT));
+		}
+	}
+	action_plan.data.push_back(static_cast<int>(findFrontier::Action::FWD));
+}
+
+
+void findFrontier::addGoLeftAction(std_msgs::Int32MultiArray& action_plan, int *dir){
+	int dth;
+	dth = *dir - static_cast<int>(findFrontier::Direction::WEST);
+	*dir = static_cast<int>(findFrontier::Direction::WEST);
+	if (dth < 0) dth += 4; // to make range from 0 to 3
+	if (dth == 3) {
+		action_plan.data.push_back(static_cast<int>(findFrontier::Action::RIGHT));
+	} else {
+		for (int i = 0; i < dth; i++){
+			action_plan.data.push_back(static_cast<int>(findFrontier::Action::LEFT));
+		}
+	}
+	action_plan.data.push_back(static_cast<int>(findFrontier::Action::FWD));
+}
+
+
+void findFrontier::addGoUpAction(std_msgs::Int32MultiArray& action_plan, int *dir){
+	int dth;
+	dth = *dir - static_cast<int>(findFrontier::Direction::NORTH);
+	*dir = static_cast<int>(findFrontier::Direction::NORTH);
+	if (dth < 0) dth += 4; // to make range from 0 to 3
+	if (dth == 3) {
+		action_plan.data.push_back(static_cast<int>(findFrontier::Action::RIGHT));
+	} else {
+		for (int i = 0; i < dth; i++){
+			action_plan.data.push_back(static_cast<int>(findFrontier::Action::LEFT));
+		}
+	}
+	action_plan.data.push_back(static_cast<int>(findFrontier::Action::FWD));
+}
+
+void findFrontier::addGoDownAction(std_msgs::Int32MultiArray& action_plan, int *dir){
+	int dth;
+	dth = *dir - static_cast<int>(findFrontier::Direction::SOUTH);
+	*dir = static_cast<int>(findFrontier::Direction::SOUTH);
+	if (dth < 0) dth += 4; // to make range from 0 to 3
+	if (dth == 3) {
+		action_plan.data.push_back(static_cast<int>(findFrontier::Action::RIGHT));
+	} else {
+		for (int i = 0; i < dth; i++){
+			action_plan.data.push_back(static_cast<int>(findFrontier::Action::LEFT));
+		}
+	}
+	action_plan.data.push_back(static_cast<int>(findFrontier::Action::FWD));
+}
+
+
+void findFrontier::makeActionPlan(const std::vector<geometry_msgs::PoseStamped> plan, const nav_msgs::OccupancyGrid::ConstPtr& msg){
+	cout << "makeActionPlan entered" << endl;
+	std_msgs::Int32MultiArray index_plan, action_plan;
+	vector<geometry_msgs::PoseStamped> grid_plan;
+	if (plan.size() == 0){
+	    action_plan.data.push_back(rand() % 3);
+		action_plan_pub.publish(action_plan);
+		return;
+	}
+	/**********************************************************************
+	* indexing & grid_plan pose coordinating is done in the following order
+	* -----> x 0, 1, 2,..., size_x-1
+	* |        size_x, size_x+1, ...,
+	* |
+	* v
+	* y
+	*
+	* Caution: in ros msg,
+	* ^ y
+	* |
+	* |         size_x, ...,
+	* ------->x 0, 1, 2, ..., size_x-1
+	* Thus, index is modified before indexing to ros msg
+	************************************************************************/
 	int index = findGridIndex(plan.at(0));
-	index_plan.push_back(index);
+	index_plan.data.push_back(index);
+
+	geometry_msgs::PoseStamped pose;
+	pose.pose.position.x = static_cast<int>(index % size_x);
+	pose.pose.position.y = static_cast<int>(index / size_x);
+	grid_plan.push_back(pose);
 	int prev_index = index;
+
 	for (int i = 1; i < plan.size(); i++){
 		index = findGridIndex(plan.at(i));
 		if (index == prev_index) continue;
 		else {
-			index_plan.push_back(index);
+			index_plan.data.push_back(index);
+			cout << index / size_x << endl;
+			pose.pose.position.x = static_cast<int>(index % size_x);
+			pose.pose.position.y = static_cast<int>(index / size_x);
+			grid_plan.push_back(pose);
 			prev_index = index;
 		}
 	}
 
-	int current_x = (pose_ptr_->pose.position.x - map_scale * 0.5) / map_scale;
-	// assume 4-dim only: up, right, left, down
-	prev_index = index_plan.at(0);
-	int prev_x, prev_y, x, y;
-	for (int i = 1; i < index_plan.size(); i++){
-		index = index_plan.at(i);
-		indexToXY(prev_index, prev_x, prev_y);
-		indexToXY(index, x, y);
-		if (x > prev_x){ // should go right
-
-		}
+	if (grid_plan.size() < 2){
+	    action_plan.data.push_back(rand() % 3);
+		action_plan_pub.publish(action_plan);
+		return;
 	}
-	action_pub.publish(action_list);
+
+	vector<geometry_msgs::PoseStamped>::iterator it, prev_it;
+	vector<int>::iterator index_it, index_prev_it;
+	prev_it = grid_plan.begin();
+	index_prev_it = index_plan.data.begin();
+
+	it = next(prev_it, 1);
+	index_it = next(index_prev_it, 1);
+	int dx,dy, dth;
+	int dir = agent_dir;
+	for (; it != grid_plan.end(); it++){
+		prev_index = *index_prev_it;
+		index = *index_it;
+		cout << "next pose: " << it->pose.position.x << "," <<it->pose.position.y << ", curr_pose: " << prev_it->pose.position.x << "," <<prev_it->pose.position.y << endl;
+		dx = it->pose.position.x - prev_it->pose.position.x;
+		dy = it->pose.position.y - prev_it->pose.position.y;
+		cout << "dx, dy: " << dx << "," << dy << endl;
+		if (dx == 0 or dy == 0){
+			if (dy == 0){
+				if (dx > 0){ // should go right
+					addGoRightAction(action_plan, &dir);
+				} else if (dx < 0){ // should go left
+					addGoLeftAction(action_plan, &dir);
+				}
+			} else if (dx == 0){
+				if (dy > 0){ // should go down
+					addGoDownAction(action_plan, &dir);
+				} else if (dy < 0){ // should go up
+					addGoUpAction(action_plan, &dir);
+				}
+			}
+
+		} else if (dx > 0){
+			index = index % size_x + static_cast<int>(size_y - 1 - index / size_x) * size_x;
+			prev_index = prev_index % size_x + static_cast<int>(size_y - 1 - prev_index / size_x) * size_x;
+			cout << "index: " << index << ", prev_index: " << prev_index << endl;
+
+			if (dy > 0){
+				if (static_cast<int>(msg->data[index - 1]) == 0){ // go down first, then go right
+					// go down
+					addGoDownAction(action_plan, &dir);
+					addGoRightAction(action_plan, &dir);
+				} else if (static_cast<int>(msg->data[prev_index + 1]) == 0){ // go right first
+					addGoRightAction(action_plan, &dir);
+					addGoDownAction(action_plan, &dir);
+				} else {
+					cout << "findFrontier: makeActionPlan: dx>0 dy>0: This should not happen" << endl;
+					cout << "index: " << index << ", prev_index: " << prev_index << endl;
+					cout << "msg->data[index - 1]: " << static_cast<int>(msg->data[index-1]) << ", msg->data[prev_index + 1]: " << static_cast<int>(msg->data[prev_index + 1]) << endl;
+				}
+			} else { // dy < 0
+				if (static_cast<int>(msg->data[index - 1]) == 0){ // go up then go right
+					addGoUpAction(action_plan, &dir);
+					addGoRightAction(action_plan, &dir);
+				} else if (static_cast<int>(msg->data[prev_index + 1]) == 0){
+					addGoRightAction(action_plan, &dir);
+					addGoUpAction(action_plan, &dir);
+				} else {
+					cout << "msg->data[index - 1]: " << static_cast<int>(msg->data[index-1]) << ", msg->data[prev_index + 1]: " << static_cast<int>(msg->data[prev_index + 1]) << endl;
+					cout << "findFrontier: makeActionPlan: dx>0, dy<0 This should not happen" << endl;
+				}
+			}
+		} else if (dx < 0){
+			index = index % size_x + static_cast<int>(size_y- 1 - index / size_x) * size_x;
+			prev_index = prev_index % size_x + static_cast<int>(size_y - 1 - prev_index / size_x) * size_x;
+			cout << "index: " << index << ", prev_index: " << prev_index << endl;
+
+			if (dy > 0){
+				if (static_cast<int>(msg->data[index + 1]) == 0){ // go down first, then go left
+					// go down
+					addGoDownAction(action_plan, &dir);
+					addGoLeftAction(action_plan, &dir);
+				} else if (static_cast<int>(msg->data[prev_index - 1]) == 0){ // go left first
+					addGoLeftAction(action_plan, &dir);
+					addGoDownAction(action_plan, &dir);
+				} else {
+					cout << "index: " << index << ", prev_index: " << prev_index << endl;
+					cout << "msg->data[index + 1]: " << static_cast<int>(msg->data[index+1]) << ", msg->data[prev_index - 1]: " << static_cast<int>(msg->data[prev_index - 1]) << endl;
+					cout << "findFrontier: makeActionPlan: dx<0 dy>0: This should not happen" << endl;
+				}
+			} else { // dy < 0
+				if (static_cast<int>(msg->data[index + 1]) == 0){ // go up then go left
+					addGoUpAction(action_plan, &dir);
+					addGoLeftAction(action_plan, &dir);
+				} else if (static_cast<int>(msg->data[prev_index - 1]) == 0){
+					addGoLeftAction(action_plan, &dir);
+					addGoUpAction(action_plan, &dir);
+				} else {
+					cout << "index: " << index << ", prev_index: " << prev_index << endl;
+					cout << "msg->data[index + 1]: " << msg->data[index+1] << ", msg->data[prev_index - 1]: " << msg->data[prev_index - 1] << endl;
+					cout << "findFrontier: makeActionPlan: dx<0, dy<0 This should not happen" << endl;
+				}
+			}
+		}
+		prev_it = it;
+		index_prev_it = index_it;
+		index_it++;
+	}
+	/************** For debugging *************************/
+	cout << "index plan: " << endl;
+	for (int counter = 0; counter < index_plan.data.size(); counter++){
+		cout << "  index: " << index_plan.data[counter] << endl;
+	}
+
+	cout << "grid plan: "<< endl;
+	for (it = grid_plan.begin(); it != grid_plan.end(); it++){
+		cout << "  x,y: " << it->pose.position.x << "," << it->pose.position.y << endl;
+	}
+
+	cout << "action plan: " << endl;
+	for (int counter = 0; counter < action_plan.data.size(); counter++){
+		cout << "  action: " << action_plan.data[counter] << endl;
+	}
+	/******************************************************/
+
+	action_plan_pub.publish(action_plan);
 }
 
+int findFrontier::findGridIndex(const geometry_msgs::PoseStamped position){
+	double x = position.pose.position.x;
+	double y = position.pose.position.y;
+	int grid_x = round(x / map_scale - 0.5);
+	cout << "double type y result: " << size_y - y / map_scale - 0.5 << endl;
+	int grid_y = round(size_y - y / map_scale - 0.5 );
+	return grid_x + size_x * grid_y;
+}
 
 bool findFrontier::makePlan(const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
 	cout << "makePlan entered" << endl;
@@ -415,6 +647,7 @@ bool findFrontier::PoseUpdate(find_frontier::InitPos::Request &req, find_frontie
 	pose_ptr_->pose.position.x = req.x;
 	pose_ptr_->pose.position.y = req.y;
 	pose_ptr_->pose.position.z = 0.0;
+	agent_dir = req.dir;
 	double yaw = -(M_PI/2)*req.dir;
 	tf2::Quaternion q;
 	q.setRPY(0, 0, yaw);
@@ -505,6 +738,7 @@ bool findFrontier::InitPoseUpdate(find_frontier::InitPos::Request &req, find_fro
 	g_initial_pose_ptr->pose.position.x = req.x;
 	g_initial_pose_ptr->pose.position.y = req.y;
 	g_initial_pose_ptr->pose.position.z = 0.0;
+	agent_dir = req.dir;
 	double yaw = -(M_PI/2)*req.dir;
 	tf2::Quaternion q;
 	q.setRPY(0, 0, yaw);

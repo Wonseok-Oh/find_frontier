@@ -17,7 +17,7 @@
 #include <nav_msgs/GetPlan.h>
 #include <nav_msgs/Path.h>
 #include <tf2_ros/transform_listener.h>
-
+#include <cstdlib>
 #include <pluginlib/class_loader.hpp>
 
 //service
@@ -33,6 +33,13 @@ public:
 		RIGHT,
 		FWD
 	};
+	enum class Direction {
+		EAST,
+		SOUTH,
+		WEST,
+		NORTH
+	};
+	// all enum followed hiprlgrid convention
 	findFrontier(tf2_ros::Buffer& tf);
 	virtual ~findFrontier();
 	void mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg);
@@ -41,19 +48,24 @@ public:
 	bool PoseUpdate(find_frontier::InitPos::Request &req, find_frontier::InitPos::Response& res);
 	bool InitPoseUpdate(find_frontier::InitPos::Request &req, find_frontier::InitPos::Response& res);
 	void timerCallback(const ros::TimerEvent& event);
-	void makeActionPlan(const std::vector<geometry_msgs::PoseStamped> plan);
-	void makeAction(const std::vector<int> index_plan, std_msgs::Int32MultiArray& action_list)
+	void makeActionPlan(const std::vector<geometry_msgs::PoseStamped> plan, const nav_msgs::OccupancyGrid::ConstPtr& msg);
+	//void makeAction(const std::vector<int> index_plan, std_msgs::Int32MultiArray& action_list);
+	int findGridIndex(const geometry_msgs::PoseStamped position);
+	void addGoLeftAction(std_msgs::Int32MultiArray& action_plan, int *dir);
+	void addGoRightAction(std_msgs::Int32MultiArray& action_plan, int *dir);
+	void addGoUpAction(std_msgs::Int32MultiArray& action_plan, int *dir);
+	void addGoDownAction(std_msgs::Int32MultiArray& action_plan, int *dir);
 	//void PoseSubCb(geometry_msgs::PoseStampedConstPtr pose);
 
 private:
 	//ros::Subscriber pose_sub;
 	ros::Subscriber navigation_map_sub;
 	ros::ServiceServer init_pos_service, pos_service;
-	ros::Publisher pub, action_pub;
+	ros::Publisher pub, action_plan_pub;
 	ros::Publisher pub_markers;
 	ros::Timer timer;
 	geometry_msgs::PoseStamped *pose_ptr_, *g_initial_pose_ptr;
-	int IsPoseUpdated, counter;
+	int IsPoseUpdated, counter, size_x, size_y, agent_dir;
 	bool g_isInit;
 	ros::Publisher marker_pub;
 	ros::Publisher goal_pub;

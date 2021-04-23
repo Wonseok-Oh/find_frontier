@@ -12,11 +12,12 @@ global_costmap:
    width: 30
    height: 30
    rolling_window: false
+   inflation_radius: 1.5
    
    plugins:
    - {name: static_layer, type: "costmap_2d::StaticLayer"}
-
+   - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
    
    static_layer:
       map_topic: spatial_map
-      subscribe_to_updates: true
+      subscribe_to_updates: true     
