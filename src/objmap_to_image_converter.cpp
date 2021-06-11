@@ -12,6 +12,7 @@ ros::Publisher g_image_pub;
 #define FLOOR 0
 #define UNKNOWN -1
 #define WALL 100
+#define GOAL 50
 
 bool objectMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& map){
 	cv::Mat image;
@@ -62,6 +63,12 @@ bool objectMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& map){
 			image.at<cv::Vec<unsigned char, 3>>(x,y)[0] = 0;
 			image.at<cv::Vec<unsigned char, 3>>(x,y)[1] = 0;
 			image.at<cv::Vec<unsigned char, 3>>(x,y)[2] = 0;
+			break;
+
+		case GOAL: // pink
+			image.at<cv::Vec<unsigned char, 3>>(x,y)[0] = 203;
+			image.at<cv::Vec<unsigned char, 3>>(x,y)[1] = 192;
+			image.at<cv::Vec<unsigned char, 3>>(x,y)[2] = 255;
 			break;
 
 		default:
