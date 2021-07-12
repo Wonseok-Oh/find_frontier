@@ -19,5 +19,5 @@ global_costmap:
    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
    
    static_layer:
-      map_topic: spatial_map
+      map_topic: spatial_map3
       subscribe_to_updates: true     

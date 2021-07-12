@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <!--- Run Move Base -->
+  <node pkg="find_frontier" type="find_frontier_node" respawn="false" name="find_frontier0" output="screen">
+    <rosparam file="$(find find_frontier)/param/global_costmap.yaml" command="load"/>
+  </node>
+  <rosparam> use_sim_time: false </rosparam>
+</launch>

@@ -2,21 +2,21 @@
 
 using namespace std;
 
-findFrontier::findFrontier(tf2_ros::Buffer& tf): tf_(tf),
+findFrontier::findFrontier(tf2_ros::Buffer& tf, string process_num): tf_(tf),
 		goal_x(0), goal_y(0), goal_w(1), IsPoseUpdated(0), counter(0), g_isInit(false), agent_dir(0),
 		bgp_loader_("nav_core", "nav_core::BaseGlobalPlanner"), planner_costmap_ros_(NULL), size_x(0), size_y(0){
 		ros::NodeHandle nh;
 		//pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("pose", 1, boost::bind(&findFrontier::PoseSubCb, this, _1) );
-		navigation_map_sub = nh.subscribe<nav_msgs::OccupancyGrid>("navigation_map", 1, &findFrontier::mapConvert, this);
-		init_pos_service = nh.advertiseService("init_pose_update", &findFrontier::InitPoseUpdate, this);
-		pos_service = nh.advertiseService("pose_update", &findFrontier::PoseUpdate, this);
+		navigation_map_sub = nh.subscribe<nav_msgs::OccupancyGrid>("navigation_map" + process_num, 1, &findFrontier::mapConvert, this);
+		init_pos_service = nh.advertiseService("init_pose_update" + process_num, &findFrontier::InitPoseUpdate, this);
+		pos_service = nh.advertiseService("pose_update" + process_num, &findFrontier::PoseUpdate, this);
 		//init_pos_sub = nh.subscribe("initial_pose", 1, &findFrontier::InitPoseUpdate, this);
 		//sub = nh.subscribe<nav_msgs::OccupancyGrid>("spatial_map", 1, boost::bind(&findFrontier::mapConvert, this, _1) );
 		timer = nh.createTimer(ros::Duration(0.2), &findFrontier::timerCallback, this);
-		marker_pub = nh.advertise<visualization_msgs::Marker>("FrontierLocationMarker",1);
-		goal_pub = nh.advertise<geometry_msgs::PoseStamped>("goal",1, true);
-		g_plan_pub_ = nh.advertise<nav_msgs::Path>("global_plan", 1);
-		action_plan_pub = nh.advertise<std_msgs::Int32MultiArray>("action_plan", 1);
+		marker_pub = nh.advertise<visualization_msgs::Marker>("FrontierLocationMarker" + process_num,1);
+		goal_pub = nh.advertise<geometry_msgs::PoseStamped>("goal" + process_num,1, true);
+		g_plan_pub_ = nh.advertise<nav_msgs::Path>("global_plan" + process_num, 1);
+		action_plan_pub = nh.advertise<std_msgs::Int32MultiArray>("action_plan" + process_num, 1);
 	    planner_plan_ = new std::vector<geometry_msgs::PoseStamped>();
 	    pose_ptr_ = new geometry_msgs::PoseStamped;
 	    g_initial_pose_ptr = new geometry_msgs::PoseStamped;

@@ -90,9 +90,10 @@ bool objectMapCallback(const nav_msgs::OccupancyGrid::ConstPtr& map){
 
 int main(int argc, char **argv){
 	ros::init(argc, argv, "object_map_converter");
+	std::string process_num = std::string(argv[1]);
 	ros::NodeHandle n;
-	ros::Subscriber sub = n.subscribe<nav_msgs::OccupancyGrid>("object_map", 1, objectMapCallback);
-	g_image_pub = n.advertise<sensor_msgs::Image>("object_img_map", 1);
+	ros::Subscriber sub = n.subscribe<nav_msgs::OccupancyGrid>("object_map" + process_num, 1, objectMapCallback);
+	g_image_pub = n.advertise<sensor_msgs::Image>("object_img_map" + process_num, 1);
 	ros::spin();
 	return 0;
 }

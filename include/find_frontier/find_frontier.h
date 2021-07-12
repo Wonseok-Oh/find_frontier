@@ -40,7 +40,7 @@ public:
 		NORTH
 	};
 	// all enum followed hiprlgrid convention
-	findFrontier(tf2_ros::Buffer& tf);
+	findFrontier(tf2_ros::Buffer& tf, std::string process_num);
 	virtual ~findFrontier();
 	void mapConvert(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 	bool makePlan(const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);

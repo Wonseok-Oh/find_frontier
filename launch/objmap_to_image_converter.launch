@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <!--- Run Move Base -->
+  <node pkg="find_frontier" type="objmap_to_image_converter" respawn="false" name="objmap_to_image_converter" output="screen"/>
+</launch>
