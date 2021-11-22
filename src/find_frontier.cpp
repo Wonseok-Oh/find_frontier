@@ -428,7 +428,7 @@ void findFrontier::makeActionPlan(const std::vector<geometry_msgs::PoseStamped> 
 	std_msgs::Int32MultiArray index_plan, action_plan;
 	vector<geometry_msgs::PoseStamped> grid_plan;
 	if (plan.size() == 0){
-	    action_plan.data.push_back(rand() % 3);
+		//action_plan.data.push_back(rand() % 3);
 		action_plan_pub.publish(action_plan);
 		return;
 	}
