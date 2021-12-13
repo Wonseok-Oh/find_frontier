@@ -1,0 +1,14 @@
+int32[] agent_id_list
+float64[] agent_pos_x_list
+float64[] agent_pos_y_list
+int32[] agent_dir_list
+int32[] box_id_list
+float64[] box_pos_x_list
+float64[] box_pos_y_list
+int32 planning_mode
+---
+find_frontier/ActionArray action_array
+
+int32 SEARCH = 0
+int32 KEEP = 1
+int32 BRING = 2

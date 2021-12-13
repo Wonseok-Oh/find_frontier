@@ -31,6 +31,7 @@ add_service_files(
   FILES
   InitPos.srv
   InitPosList.srv
+  PlanningID.srv
 )
 
 add_message_files(

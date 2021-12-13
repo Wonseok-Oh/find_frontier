@@ -1,5 +1,6 @@
 float64[] x
 float64[] y
 int64[] dir
+int64[] agent_id_list
 ---
 int64 result

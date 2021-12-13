@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <!--- Run Move Base -->
+  <node pkg="find_frontier" type="find_frontier_multi_node" respawn="false" name="hiprl_explore0" args = "0" output="screen" launch-prefix="xterm -e gdb --args">
+    <rosparam file="$(find find_frontier)/param/multi/global_costmap0.yaml" command="load"/>
+  </node>
+  <rosparam> use_sim_time: false </rosparam>
+</launch>
