@@ -68,6 +68,6 @@ global_costmap2:
    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
    
    static_layer:
-      map_topic: spatial_map0
+      map_topic: spatial_map24
       subscribe_to_updates: true     
    

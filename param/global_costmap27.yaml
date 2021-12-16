@@ -1,0 +1,23 @@
+GlobalPlanner:
+   use_dijkstra: false
+
+global_costmap:
+   robot_radius: 1.5
+   global_frame: map
+   robot_base_frame: base_link
+   update_frequency: 1.0
+   publish_frequency: 1.0
+   transform_tolerance: 1000
+   resolution: 3.0
+   width: 30
+   height: 30
+   rolling_window: false
+   inflation_radius: 1.5
+   
+   plugins:
+   - {name: static_layer, type: "costmap_2d::StaticLayer"}
+   - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+   
+   static_layer:
+      map_topic: spatial_map27
+      subscribe_to_updates: true     

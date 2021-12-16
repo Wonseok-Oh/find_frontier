@@ -26,7 +26,7 @@ global_costmap0:
    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
    
    static_layer:
-      map_topic: spatial_map1
+      map_topic: spatial_map7
       subscribe_to_updates: true     
 
 global_costmap1:
@@ -47,7 +47,7 @@ global_costmap1:
    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
    
    static_layer:
-      map_topic: spatial_map1
+      map_topic: spatial_map7
       subscribe_to_updates: true     
       
 global_costmap2:
@@ -68,6 +68,6 @@ global_costmap2:
    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
    
    static_layer:
-      map_topic: spatial_map1
+      map_topic: spatial_map7
       subscribe_to_updates: true     
    
